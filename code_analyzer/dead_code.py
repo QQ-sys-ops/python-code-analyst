@@ -1,7 +1,7 @@
 """
-dead_code.py — 死代码检测器
-功能: 从入口点遍历调用图，识别未被调用的函数
-依赖: call_graph.py (CallGraph)
+dead_code.py — Dead Code Detector
+Features: Traverse call graph from entry points, identify uncalled functions
+Dependencies: call_graph.py (CallGraph)
 """
 
 from dataclasses import dataclass
@@ -10,12 +10,12 @@ from .call_graph import SPECIAL_FUNCTIONS
 
 @dataclass
 class DeadCodeResult:
-    """死代码检测结果"""
-    unreachable: list[str]      # 未被调用的函数
-    reachable: list[str]        # 被调用的函数
-    total_user_functions: int   # 用户定义的函数总数
-    coverage: float             # 覆盖率 0-100
-    special_excluded: list[str] # 被排除的特殊方法
+    """Dead code detection result"""
+    unreachable: list[str]      # uncalled functions
+    reachable: list[str]        # called functions
+    total_user_functions: int   # total number of user-defined functions
+    coverage: float             # coverage rate 0-100
+    special_excluded: list[str] # excluded special methods
 
     def to_dict(self) -> dict:
         return {
@@ -30,31 +30,31 @@ class DeadCodeResult:
 
 class DeadCodeDetector:
     """
-    死代码检测器
-    逻辑:
-    1. 从入口点出发，BFS遍历调用图
-    2. 所有被遍历到的函数 = 可达（活代码）
-    3. 用户定义但不可达的函数 = 死代码
-    4. Python特殊方法自动排除
+    Dead code detector
+    Logic:
+    1. Start from entry points, BFS traversal of call graph
+    2. All traversed functions = reachable (live code)
+    3. User-defined but unreachable functions = dead code
+    4. Python special methods are automatically excluded
     """
 
     def __init__(self, call_graph, all_functions: list):
         """
         Args:
-            call_graph: CallGraph对象
+            call_graph: CallGraph object
             all_functions: StructureAnalysis.all_functions
         """
         self.call_graph = call_graph
         self.all_functions = all_functions
 
     def detect(self) -> DeadCodeResult:
-        """执行死代码检测"""
-        # 构建正向邻接表
+        """Execute dead code detection"""
+        # Build forward adjacency list
         adj: dict[str, set[str]] = {}
         for edge in self.call_graph.edges:
             adj.setdefault(edge.caller, set()).add(edge.callee)
 
-        # 从入口点BFS
+        # BFS from entry points
         reachable = set()
         queue = list(self.call_graph.entry_points)
 
@@ -67,14 +67,14 @@ class DeadCodeDetector:
                 if neighbor not in reachable:
                     queue.append(neighbor)
 
-        # 也标记被直接调用的函数（入口点可能不完整）
+        # Also mark directly called functions (entry points may be incomplete)
         for edge in self.call_graph.edges:
             reachable.add(edge.callee)
 
-        # 收集所有用户定义的函数
+        # Collect all user-defined functions
         user_funcs = set()
         special_excluded = []
-        public_api = set()  # 公共API（非下划线开头的模块级函数）
+        public_api = set()  # public API (module-level functions not starting with underscore)
         for func in self.all_functions:
             qn = func.qualified_name
             name = func.name
@@ -82,16 +82,16 @@ class DeadCodeDetector:
                 special_excluded.append(qn)
                 continue
             user_funcs.add(qn)
-            # 公共API: 非下划线开头的模块级函数（可能是外部调用入口）
+            # Public API: module-level functions not starting with underscore (may be external call entry points)
             if not func.is_method and not name.startswith('_'):
                 public_api.add(qn)
 
-        # 死代码 = 用户定义 - 可达 - 公共API
-        # 公共API不计入死代码（可能被外部模块调用）
+        # Dead code = user-defined - reachable - public API
+        # Public API is not counted as dead code (may be called by external modules)
         unreachable = sorted(user_funcs - reachable - public_api)
         reachable_list = sorted(user_funcs & reachable)
 
-        # 覆盖率
+        # Coverage rate
         total = len(user_funcs)
         coverage = (len(reachable_list) / total * 100) if total > 0 else 100.0
 
@@ -105,6 +105,6 @@ class DeadCodeDetector:
 
 
 def detect_dead_code(call_graph, all_functions: list) -> DeadCodeResult:
-    """便捷函数: 检测死代码"""
+    """Convenience function: detect dead code"""
     detector = DeadCodeDetector(call_graph, all_functions)
     return detector.detect()
