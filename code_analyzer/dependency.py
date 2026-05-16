@@ -1,7 +1,7 @@
 """
-dependency.py — 模块依赖分析器
-功能: stdlib/third-party/local自动分类、循环依赖检测(DFS)、扇入扇出
-依赖: ast_analyzer.py (ImportInfo)
+dependency.py — Module Dependency Analyzer
+Features: Auto-classification of stdlib/third-party/local, circular dependency detection (DFS), fan-in/fan-out
+Dependencies: ast_analyzer.py (ImportInfo)
 """
 
 import ast
@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-# Python标准库模块列表（Python 3.8+常用）
+# Python standard library module list (commonly used in Python 3.8+)
 STDLIB_MODULES: set[str] = {
-    # 内置模块
+    # Built-in modules
     'abc', 'aifc', 'argparse', 'array', 'ast', 'asynchat', 'asyncio',
     'asyncore', 'atexit', 'audioop', 'base64', 'bdb', 'binascii',
     'binhex', 'bisect', 'builtins', 'bz2', 'calendar', 'cgi', 'cgitb',
@@ -48,7 +48,7 @@ STDLIB_MODULES: set[str] = {
     'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref',
     'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport',
     'zlib',
-    # 常用子模块
+    # Common submodules
     'os.path', 'os.pathsep', 'os.sep',
     'logging.handlers', 'logging.config',
     'collections.abc', 'collections.defaultdict',
@@ -62,15 +62,15 @@ STDLIB_MODULES: set[str] = {
 
 @dataclass
 class DependencyInfo:
-    """依赖分析结果"""
-    standard_lib: list[str]     # 标准库依赖
-    third_party: list[str]      # 第三方依赖
-    local: list[str]            # 本地依赖
-    all_modules: list[str]      # 所有导入的模块
-    has_circular: bool          # 是否存在循环依赖
-    circular_cycles: list[list[str]]  # 循环链
-    fan_in: dict[str, int]      # 扇入: 被多少模块依赖
-    fan_out: dict[str, int]     # 扇出: 依赖多少模块
+    """Dependency analysis result"""
+    standard_lib: list[str]     # standard library dependencies
+    third_party: list[str]      # third-party dependencies
+    local: list[str]            # local dependencies
+    all_modules: list[str]      # all imported modules
+    has_circular: bool          # whether circular dependencies exist
+    circular_cycles: list[list[str]]  # circular dependency chains
+    fan_in: dict[str, int]      # fan-in: how many modules depend on this
+    fan_out: dict[str, int]     # fan-out: how many modules this depends on
     import_count: int
 
     def to_dict(self) -> dict:
@@ -90,29 +90,29 @@ class DependencyInfo:
 
 
 class DependencyAnalyzer:
-    """模块依赖分析器"""
+    """Module dependency analyzer"""
 
     def __init__(self, imports: list, source: str = ""):
         """
         Args:
             imports: StructureAnalysis.imports
-            source: 源码字符串（用于本地模块检测）
+            source: source code string (used for local module detection)
         """
         self.imports = imports
         self.source = source
 
     def analyze(self, source_files: list[str] = None) -> DependencyInfo:
         """
-        执行依赖分析
+        Execute dependency analysis
         Args:
-            source_files: 项目中所有.py文件路径（用于本地模块检测）
+            source_files: all .py file paths in the project (used for local module detection)
         """
         standard_lib = []
         third_party = []
         local = []
         all_modules = []
 
-        # 收集所有导入的模块
+        # Collect all imported modules
         for imp in self.imports:
             module = imp.module
             if not module:
@@ -120,7 +120,7 @@ class DependencyAnalyzer:
 
             all_modules.append(module)
 
-            # 分类
+            # Classify
             category = self._classify_module(module, source_files)
             if category == 'stdlib':
                 standard_lib.append(module)
@@ -129,19 +129,19 @@ class DependencyAnalyzer:
             elif category == 'local':
                 local.append(module)
 
-        # 去重
+        # Deduplicate
         standard_lib = sorted(set(standard_lib))
         third_party = sorted(set(third_party))
         local = sorted(set(local))
         all_modules = sorted(set(all_modules))
 
-        # 循环依赖检测（需要多文件信息）
+        # Circular dependency detection (requires multi-file information)
         has_circular = False
         circular_cycles = []
         if source_files and len(source_files) > 1:
             has_circular, circular_cycles = self._detect_circular(source_files)
 
-        # 扇入扇出
+        # Fan-in / Fan-out
         fan_in, fan_out = self._calc_fan(all_modules)
 
         return DependencyInfo(
@@ -157,19 +157,19 @@ class DependencyAnalyzer:
         )
 
     def _classify_module(self, module: str, source_files: list[str] = None) -> str:
-        """分类模块: stdlib / third-party / local"""
-        # 取顶层模块名
+        """Classify module: stdlib / third-party / local"""
+        # Get top-level module name
         top_module = module.split('.')[0]
 
-        # 检查标准库
+        # Check standard library
         if top_module in STDLIB_MODULES or module in STDLIB_MODULES:
             return 'stdlib'
 
-        # 相对导入一定是本地
+        # Relative imports are always local
         if module.startswith('.'):
             return 'local'
 
-        # 检查本地模块（有source_files时精确匹配）
+        # Check local modules (exact match when source_files is available)
         if source_files:
             for sf in source_files:
                 sf_path = Path(sf)
@@ -177,26 +177,26 @@ class DependencyAnalyzer:
                 if top_module == sf_stem or top_module == sf_path.name:
                     return 'local'
 
-        # 启发式判断：src.开头的通常是本地项目模块
+        # Heuristic: modules starting with src. are usually local project modules
         if top_module == 'src' or top_module.startswith('src_'):
             return 'local'
 
-        # 检查是否是当前目录下存在的模块
+        # Check if module exists in current directory
         try:
             if Path(f"{top_module}.py").exists() or Path(top_module).is_dir():
                 return 'local'
         except (OSError, ValueError):
             pass
 
-        # 其余归为第三方
+        # Remaining are classified as third-party
         return 'third-party'
 
     def _detect_circular(self, source_files: list[str]) -> tuple[bool, list[list[str]]]:
         """
-        检测循环依赖（DFS环检测）
-        需要扫描所有源文件的import关系
+        Detect circular dependencies (DFS cycle detection)
+        Requires scanning import relationships in all source files
         """
-        # 构建模块→依赖映射
+        # Build module → dependency mapping
         module_deps: dict[str, set[str]] = {}
 
         for sf in source_files:
@@ -225,7 +225,7 @@ class DependencyAnalyzer:
             except (SyntaxError, ValueError):
                 continue
 
-        # DFS找环
+        # DFS to find cycles
         cycles = []
         visited = set()
         rec_stack = set()
@@ -242,7 +242,7 @@ class DependencyAnalyzer:
                 if neighbor not in visited:
                     dfs(neighbor)
                 elif neighbor in rec_stack:
-                    # 找到环
+                    # Cycle found
                     cycle_start = path.index(neighbor)
                     cycle = path[cycle_start:] + [neighbor]
                     cycles.append(cycle)
@@ -257,7 +257,7 @@ class DependencyAnalyzer:
         return len(cycles) > 0, cycles
 
     def _calc_fan(self, all_modules: list[str]) -> tuple[dict[str, int], dict[str, int]]:
-        """计算扇入扇出"""
+        """Calculate fan-in and fan-out"""
         fan_in: dict[str, int] = {}
         fan_out: dict[str, int] = {}
 
@@ -269,6 +269,6 @@ class DependencyAnalyzer:
 
 
 def analyze_dependencies(imports: list, source_files: list[str] = None) -> DependencyInfo:
-    """便捷函数: 分析依赖"""
+    """Convenience function: analyze dependencies"""
     analyzer = DependencyAnalyzer(imports)
     return analyzer.analyze(source_files)
