@@ -1,8 +1,8 @@
 """
-schema.py — radon 兼容的 JSON Schema 定义
+schema.py — radon-compatible JSON Schema definition
 
-定义 code_analyzer JSON 输出的标准结构，与 radon cc 输出格式兼容。
-参考: 07_code-analysis：我的实现方案与交叉验证体系.md L382-430
+Defines the standard structure of code_analyzer JSON output, compatible with radon cc output format.
+Reference: 07_code-analysis: My Implementation and Cross-validation System.md L382-430
 """
 
 OUTPUT_SCHEMA = {
@@ -26,16 +26,16 @@ OUTPUT_SCHEMA = {
         "total_arguments": "int",
     },
     "complexity": {
-        # 与 radon cc_visit 输出格式兼容
+        # Compatible with radon cc_visit output format
         "functions": {
-            # radon 兼容字段
+            # radon-compatible fields
             "name": "string",
             "lineno": "int",
             "end_lineno": "int",
-            "complexity": "int",        # ← radon 兼容 (alias for cyclomatic_complexity)
-            "rank": "string",           # ← radon 兼容 (A-F rating)
-            "type": "string",           # ← radon 兼容 ('F' = function, 'M' = method)
-            # code-analysis 扩展字段
+            "complexity": "int",        # radon-compatible (alias for cyclomatic_complexity)
+            "rank": "string",           # radon-compatible (A-F rating)
+            "type": "string",           # radon-compatible ('F' = function, 'M' = method)
+            # code-analysis extended fields
             "cognitive": "int",         # ← cognitive complexity
             "cyclomatic_complexity": "int",
             "cognitive_complexity": "int",
@@ -48,7 +48,7 @@ OUTPUT_SCHEMA = {
         }
     },
     "call_graph": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "edge_count": "int",
         "user_function_count": "int",
         "called_function_count": "int",
@@ -58,7 +58,7 @@ OUTPUT_SCHEMA = {
         "entry_points": "list[string]",
     },
     "dependency": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "standard_lib": "list[string]",
         "third_party": "list[string]",
         "local": "list[string]",
@@ -72,14 +72,14 @@ OUTPUT_SCHEMA = {
         "fan_out": "dict",
     },
     "impact": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "function_count": "int",
         "most_impacted": "list",
         "least_impacted": "list",
         "impacts": "dict",
     },
     "dead_code": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "unreachable": "list[string]",
         "reachable_count": "int",
         "unreachable_count": "int",
@@ -88,13 +88,13 @@ OUTPUT_SCHEMA = {
         "special_excluded": "list[string]",
     },
     "doc_coverage": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "functions_with_docstring": "int",
         "total_functions": "int",
         "coverage_percent": "float",
     },
     "quality_score": {
-        # code-analysis 独有
+        # code-analysis exclusive
         "score": "float",
         "grade": "string",
         "breakdown": "dict",
@@ -105,13 +105,13 @@ OUTPUT_SCHEMA = {
 
 def validate_output(data: dict) -> list[str]:
     """
-    验证 code_analyzer 的 JSON 输出是否符合 schema。
+    Validate whether code_analyzer JSON output conforms to the schema.
 
-    返回: 错误列表（空列表 = 通过）
+    Returns: list of errors (empty list = pass)
     """
     errors = []
 
-    # 检查顶层 key
+    # Check top-level keys
     for section in OUTPUT_SCHEMA:
         if section == "report":
             if section not in data:
@@ -123,7 +123,7 @@ def validate_output(data: dict) -> list[str]:
         if section not in data:
             errors.append(f"Missing top-level section: {section}")
 
-    # 检查 complexity.functions 的 radon 字段
+    # Check radon fields in complexity.functions
     if "structure" in data and "functions" in data.get("structure", {}):
         funcs = data["structure"]["functions"]
         radon_fields = ["name", "lineno", "end_lineno", "complexity", "rank", "type"]
