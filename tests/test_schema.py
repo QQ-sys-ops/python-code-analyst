@@ -1,17 +1,17 @@
-"""schema.py 测试 — 验证 radon 兼容 JSON Schema 定义"""
+"""schema.py tests -- verify radon-compatible JSON Schema definition"""
 import json
 import subprocess
 import sys
 
 
 def test_schema_exists():
-    """schema 模块必须可导入"""
+    """schema module must be importable"""
     from code_analyzer import schema
     assert hasattr(schema, "OUTPUT_SCHEMA")
 
 
 def test_schema_has_required_sections():
-    """OUTPUT_SCHEMA 必须包含所有必要的顶层 section"""
+    """OUTPUT_SCHEMA must contain all required top-level sections"""
     from code_analyzer.schema import OUTPUT_SCHEMA
 
     required_sections = ["structure", "complexity", "call_graph", "dependency", "impact", "dead_code", "doc_coverage", "quality_score"]
@@ -20,7 +20,7 @@ def test_schema_has_required_sections():
 
 
 def test_schema_complexity_has_radon_fields():
-    """complexity section 必须定义 radon 兼容字段"""
+    """complexity section must define radon-compatible fields"""
     from code_analyzer.schema import OUTPUT_SCHEMA
 
     complexity = OUTPUT_SCHEMA["complexity"]
@@ -33,7 +33,7 @@ def test_schema_complexity_has_radon_fields():
 
 
 def test_schema_complexity_has_code_analysis_fields():
-    """complexity section 必须定义 code-analysis 扩展字段"""
+    """complexity section must define code-analysis extension fields"""
     from code_analyzer.schema import OUTPUT_SCHEMA
 
     func_schema = OUTPUT_SCHEMA["complexity"]["functions"]
@@ -43,7 +43,7 @@ def test_schema_complexity_has_code_analysis_fields():
 
 
 def test_actual_output_matches_schema_structure():
-    """实际 JSON 输出的结构必须匹配 schema 定义"""
+    """Actual JSON output structure must match schema definition"""
     from code_analyzer.schema import OUTPUT_SCHEMA
 
     result = subprocess.run(
@@ -52,8 +52,8 @@ def test_actual_output_matches_schema_structure():
     )
     actual = json.loads(result.stdout)
 
-    # 检查顶层 key（排除 schema 概念性的 section）
-    # meta: 可选; complexity: 数据在 structure.functions 中; report: string 类型
+    # Check top-level keys (excluding conceptual schema sections)
+    # meta: optional; complexity: data lives in structure.functions; report: string type
     skip_sections = {"report", "meta", "complexity", "doc_coverage", "quality_score"}
     for section in OUTPUT_SCHEMA:
         if section in skip_sections:
@@ -62,7 +62,7 @@ def test_actual_output_matches_schema_structure():
 
 
 def test_actual_functions_match_schema_fields():
-    """实际 functions[] 的字段必须包含 schema 定义的 radon 字段"""
+    """Actual functions[] fields must include radon fields defined in schema"""
     from code_analyzer.schema import OUTPUT_SCHEMA
 
     result = subprocess.run(
