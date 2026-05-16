@@ -1,0 +1,337 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Understanding Report Schema",
+  "description": "10节标准项目理解报告的JSON Schema定义，配合project-understander方法论使用",
+  "version": "2.0.0",
+  "type": "object",
+  "required": ["meta", "sections"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["project_name", "generated_at", "analyzer_version", "project_path"],
+      "properties": {
+        "project_name": {
+          "type": "string",
+          "description": "项目名称"
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "报告生成时间 (ISO 8601)"
+        },
+        "analyzer_version": {
+          "type": "string",
+          "description": "分析工具版本 (如 project-understander v2.0)"
+        },
+        "project_path": {
+          "type": "string",
+          "description": "项目路径"
+        }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "positioning",
+        "architecture",
+        "data_flow",
+        "module_responsibilities",
+        "reading_order",
+        "call_graph",
+        "impact_analysis",
+        "risk_assessment",
+        "cross_validation",
+        "statistics"
+      ],
+      "properties": {
+        "positioning": {
+          "type": "object",
+          "description": "一、项目一句话定位",
+          "required": ["summary"],
+          "properties": {
+            "summary": {
+              "type": "string",
+              "description": "用一句话说明项目是什么、做什么、基于什么技术"
+            },
+            "tech_stack": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "技术栈列表"
+            }
+          }
+        },
+        "architecture": {
+          "type": "object",
+          "description": "二、架构分层图",
+          "required": ["layers"],
+          "properties": {
+            "layers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "modules"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "enum": ["entry", "preprocessing", "data", "model", "config"],
+                    "description": "层级名称: entry/preprocessing/data/model/config"
+                  },
+                  "display_name": {
+                    "type": "string",
+                    "description": "层级显示名称 (如 '应用入口层')"
+                  },
+                  "modules": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "该层级包含的模块列表"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "data_flow": {
+          "type": "object",
+          "description": "三、全链路数据流",
+          "required": ["steps"],
+          "properties": {
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "module", "description"],
+                "properties": {
+                  "order": {
+                    "type": "integer",
+                    "description": "步骤序号"
+                  },
+                  "module": {
+                    "type": "string",
+                    "description": "负责该步骤的模块"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "该步骤的处理逻辑"
+                  },
+                  "input": {
+                    "type": "string",
+                    "description": "输入数据"
+                  },
+                  "output": {
+                    "type": "string",
+                    "description": "输出数据"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "module_responsibilities": {
+          "type": "object",
+          "description": "四、模块职责表",
+          "required": ["modules"],
+          "properties": {
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "lines", "responsibility"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "lines": {
+                    "type": "integer",
+                    "description": "代码行数"
+                  },
+                  "dependencies": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "依赖的其他模块"
+                  },
+                  "responsibility": {
+                    "type": "string",
+                    "description": "模块职责描述"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "reading_order": {
+          "type": "object",
+          "description": "五、推荐阅读顺序",
+          "required": ["order"],
+          "properties": {
+            "order": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["step", "module", "reason"],
+                "properties": {
+                  "step": {
+                    "type": "integer",
+                    "description": "阅读步骤序号"
+                  },
+                  "module": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "阅读理由"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "call_graph": {
+          "type": "object",
+          "description": "六、调用图分析",
+          "properties": {
+            "edge_count": {
+              "type": "integer",
+              "description": "调用边总数"
+            },
+            "max_depth": {
+              "type": "integer",
+              "description": "最大调用深度"
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["caller", "callee"],
+                "properties": {
+                  "caller": { "type": "string" },
+                  "callee": { "type": "string" },
+                  "lineno": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "impact_analysis": {
+          "type": "object",
+          "description": "七、影响面分析",
+          "properties": {
+            "impacts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["module", "direct_impact", "indirect_impact"],
+                "properties": {
+                  "module": { "type": "string" },
+                  "direct_impact": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  },
+                  "indirect_impact": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "risk_assessment": {
+          "type": "object",
+          "description": "八、风险识别",
+          "required": ["risks"],
+          "properties": {
+            "risks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["priority", "category", "issue", "impact"],
+                "properties": {
+                  "priority": {
+                    "type": "string",
+                    "enum": ["P0", "P1", "P2"],
+                    "description": "风险优先级"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": ["correctness", "stability", "generalization", "reproducibility", "maintainability", "functionality", "optimization", "deployment"],
+                    "description": "风险类别"
+                  },
+                  "issue": {
+                    "type": "string",
+                    "description": "问题描述"
+                  },
+                  "impact": {
+                    "type": "string",
+                    "description": "影响描述"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "cross_validation": {
+          "type": "object",
+          "description": "九、交叉验证",
+          "properties": {
+            "validations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["judgment", "source", "status"],
+                "properties": {
+                  "judgment": {
+                    "type": "string",
+                    "description": "被验证的判断"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "验证源 (GitHub/官方文档/博客/教程)"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["verified", "partial", "refuted", "unverified"],
+                    "description": "验证状态"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "statistics": {
+          "type": "object",
+          "description": "十、统计口径声明",
+          "properties": {
+            "total_lines": {
+              "type": "integer",
+              "description": "总行数 (含空行和注释)"
+            },
+            "sloc": {
+              "type": "integer",
+              "description": "有效代码行数"
+            },
+            "function_count": {
+              "type": "integer",
+              "description": "函数/方法总数"
+            },
+            "class_count": {
+              "type": "integer",
+              "description": "类总数"
+            },
+            "doc_coverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "文档覆盖率 (%)"
+            },
+            "methodology": {
+              "type": "string",
+              "description": "统计方法说明"
+            }
+          }
+        }
+      }
+    }
+  }
+}
