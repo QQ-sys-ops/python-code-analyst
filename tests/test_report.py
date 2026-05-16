@@ -41,16 +41,16 @@ class TestGenerateReport:
         # Report should be a string
         assert isinstance(report, str)
         
-        # Report should contain basic sections (title may vary)
-        assert '分析报告' in report or '报告' in report
-        assert '结构概览' in report
+        # Report should contain basic sections (English output by default)
+        assert 'Deep Analysis Report' in report or 'Report' in report
+        assert 'Structure Overview' in report
     
     def test_report_contains_functions(self, sample_python_code):
         """Test that report contains function information."""
         report = generate_report_for_code(sample_python_code)
         
-        # Should mention functions
-        assert '函数' in report
+        # Should mention functions (English label)
+        assert 'Functions' in report
         assert 'simple_function' in report
         assert 'complex_function' in report
     
@@ -58,16 +58,16 @@ class TestGenerateReport:
         """Test that report contains class information."""
         report = generate_report_for_code(sample_python_code)
         
-        # Should mention classes
-        assert '类' in report
+        # Should mention classes (English label)
+        assert 'Classes' in report
         assert 'SampleClass' in report
     
     def test_report_contains_complexity(self, sample_python_code):
         """Test that report contains complexity information."""
         report = generate_report_for_code(sample_python_code)
         
-        # Should mention complexity
-        assert '复杂度' in report
+        # Should mention complexity (English label)
+        assert 'Complexity' in report
     
     def test_report_format_markdown(self, sample_python_code):
         """Test that report is in Markdown format."""
@@ -83,7 +83,8 @@ class TestGenerateReport:
         
         # Should still generate a valid report
         assert isinstance(report, str)
-        assert '分析报告' in report or '报告' in report
+        # English report title by default
+        assert 'Deep Analysis Report' in report or 'Report' in report
     
     def test_report_with_imports(self):
         """Test report with imports."""
@@ -97,8 +98,8 @@ def main():
 '''
         report = generate_report_for_code(code)
         
-        # Should mention imports
-        assert '导入' in report
+        # Should mention imports (English label)
+        assert 'Imports' in report
     
     def test_report_quality(self, sample_python_code):
         """Test report quality and completeness."""
