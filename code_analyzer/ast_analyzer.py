@@ -125,7 +125,28 @@ class StructureAnalysis:
             "line_count": f.line_count,
             "is_method": f.is_method,
             "parent_class": f.parent_class,
+            # radon 兼容字段
+            "complexity": f.cyclomatic_complexity,
+            "rank": _cc_rank(f.cyclomatic_complexity),
+            "type": "M" if f.is_method else "F",
         }
+
+
+# ─── radon 兼容：圈复杂度等级 ───────────────────────────────
+
+def _cc_rank(cc: int) -> str:
+    """与 radon 完全一致的评级映射: A(1-5) B(6-10) C(11-15) D(16-20) E(21-25) F(>25)"""
+    if cc <= 5:
+        return "A"
+    if cc <= 10:
+        return "B"
+    if cc <= 15:
+        return "C"
+    if cc <= 20:
+        return "D"
+    if cc <= 25:
+        return "E"
+    return "F"
 
 
 # ─── 复杂度计算 ─────────────────────────────────────────────
