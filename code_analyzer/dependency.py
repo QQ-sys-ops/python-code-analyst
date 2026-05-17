@@ -96,14 +96,16 @@ class DependencyInfo:
 class DependencyAnalyzer:
     """模块依赖分析器"""
 
-    def __init__(self, imports: list, source: str = ""):
+    def __init__(self, imports: list, source: str = "", root_dir: str | None = None):
         """
         Args:
             imports: StructureAnalysis.imports
             source: 源码字符串（用于本地模块检测）
+            root_dir: 项目根目录（用于本地模块检测，解决CWD问题）
         """
         self.imports = imports
         self.source = source
+        self.root_dir = root_dir
 
     def analyze(self, source_files: list[str] | None = None) -> DependencyInfo:
         """
@@ -185,10 +187,16 @@ class DependencyAnalyzer:
         if top_module == 'src' or top_module.startswith('src_'):
             return 'local'
 
-        # 检查是否是当前目录下存在的模块
+        # 检查是否是项目目录下存在的模块（解决CWD问题）
         try:
-            if Path(f"{top_module}.py").exists() or Path(top_module).is_dir():
-                return 'local'
+            if self.root_dir:
+                # 使用项目根目录判断
+                if Path(self.root_dir, f"{top_module}.py").exists() or Path(self.root_dir, top_module).is_dir():
+                    return 'local'
+            else:
+                # 降级到当前目录（向后兼容）
+                if Path(f"{top_module}.py").exists() or Path(top_module).is_dir():
+                    return 'local'
         except (OSError, ValueError):
             pass
 
@@ -280,7 +288,14 @@ class DependencyAnalyzer:
         return fan_in, fan_out
 
 
-def analyze_dependencies(imports: list, source_files: list[str] | None = None) -> DependencyInfo:
-    """便捷函数: 分析依赖"""
-    analyzer = DependencyAnalyzer(imports)
+def analyze_dependencies(imports: list, source_files: list[str] | None = None, 
+                         root_dir: str | None = None) -> DependencyInfo:
+    """便捷函数: 分析依赖
+    
+    Args:
+        imports: 导入列表
+        source_files: 源文件列表（用于循环依赖检测）
+        root_dir: 项目根目录（用于本地模块检测，解决CWD问题）
+    """
+    analyzer = DependencyAnalyzer(imports, root_dir=root_dir)
     return analyzer.analyze(source_files)
