@@ -195,15 +195,26 @@ class CallGraphBuilder:
         return None
 
     def _resolve_callee(self, name: str) -> str | None:
-        """将短名解析为qualified_name（O(1)后缀索引查找）"""
-        # T4优化: 使用预构建的后缀索引
+        """将短名解析为qualified_name（O(1)后缀索引查找）
+        
+        优先级：
+        1. 精确匹配qualified_name
+        2. 后缀索引匹配，优先返回无类前缀的函数（避免A.run和B.run冲突）
+        """
+        # 优先精确匹配qualified_name
+        if name in self.user_functions:
+            return name
+        
+        # 使用后缀索引
         if name in self.suffix_map:
             candidates = self.suffix_map[name]
-            # 优先返回精确匹配（短名本身就是qualified_name）
-            if name in candidates:
-                return name
+            # 优先返回没有类前缀的（短名冲突时优先模块级函数）
+            short = [c for c in candidates if '.' not in c]
+            if short:
+                return short[0]
             # 否则返回第一个匹配
             return candidates[0] if candidates else name
+        
         return name
 
     def _calc_max_depth(self, edges: list[CallEdge]) -> int:
