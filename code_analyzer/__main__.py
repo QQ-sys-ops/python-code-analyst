@@ -14,17 +14,6 @@ import argparse
 from pathlib import Path
 
 
-def _read_file(file_path: str) -> str:
-    """读取文件内容（支持多种编码回退）"""
-    path = Path(file_path)
-    for encoding in ('utf-8', 'gbk', 'latin-1'):
-        try:
-            return path.read_text(encoding=encoding)
-        except (UnicodeDecodeError, UnicodeError):
-            continue
-    raise ValueError(f"无法读取文件: {file_path}")
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Python代码静态分析工具",
@@ -68,6 +57,7 @@ def main():
 
 def single_analyze(file_path: str) -> dict:
     """分析单个Python文件（优化：只解析一次AST）"""
+    from .utils import read_file_with_encoding
     from .ast_analyzer import analyze_source
     from .call_graph import build_call_graph
     from .dependency import analyze_dependencies
@@ -76,7 +66,7 @@ def single_analyze(file_path: str) -> dict:
     from .report import generate_report
 
     # 1. 读取文件并解析AST（只解析一次）
-    source = _read_file(file_path)
+    source = read_file_with_encoding(file_path)
     tree = ast.parse(source, filename=file_path)
 
     # 2. 结构分析（复用已解析的源码）
