@@ -133,3 +133,4 @@ def validate_output(data: dict) -> list[str]:
                     errors.append(f"functions[0] missing radon field: {field}")
 
     return errors
+
