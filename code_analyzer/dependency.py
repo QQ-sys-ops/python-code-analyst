@@ -57,6 +57,10 @@ STDLIB_MODULES: set[str] = {
     'typing.TYPE_CHECKING',
     'json.decoder', 'json.encoder',
     'ast.dump', 'ast.parse', 'ast.unparse',
+    # Python 3.11+ 新增模块
+    'tomllib', 'exceptiongroup', 'taskgroup',
+    # Python 3.12+ 新增模块
+    'dbm.sqlite3',
 }
 
 
