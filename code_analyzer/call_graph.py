@@ -1,14 +1,14 @@
 """
-call_graph.py — Function Call Graph Analyzer
-Features: Two-pass scan to extract call edges, special function filtering, call depth calculation
-Dependencies: ast_analyzer.py (FunctionInfo, StructureAnalysis)
+call_graph.py — 函数调用图分析器
+功能: 两遍扫描提取调用边、特殊函数过滤、调用深度计算
+依赖: ast_analyzer.py (FunctionInfo, StructureAnalysis)
 """
 
 import ast
 from dataclasses import dataclass, field
 
 
-# Python special methods (excluded during dead code detection)
+# Python特殊方法（死代码检测时排除）
 SPECIAL_FUNCTIONS = frozenset({
     '__init__', '__new__', '__del__',
     '__str__', '__repr__', '__bytes__',
@@ -24,7 +24,7 @@ SPECIAL_FUNCTIONS = frozenset({
     '__get__', '__set__', '__delete__',
     '__init_subclass__', '__class_getitem__',
     '__missing__', '__set_name__',
-    # Framework hooks
+    # 框架钩子
     'setup', 'teardown', 'setUp', 'tearDown',
     'setUpClass', 'tearDownClass',
 })
@@ -32,21 +32,21 @@ SPECIAL_FUNCTIONS = frozenset({
 
 @dataclass
 class CallEdge:
-    """A call edge: caller → callee"""
-    caller: str       # caller qualified_name
-    callee: str       # callee qualified_name
-    lineno: int       # line number of call location
-    callee_raw: str   # raw call name (unresolved)
+    """一条调用边: caller → callee"""
+    caller: str       # 调用者 qualified_name
+    callee: str       # 被调用者 qualified_name
+    lineno: int       # 调用位置行号
+    callee_raw: str   # 原始调用名（未解析）
 
 
 @dataclass
 class CallGraph:
-    """Call graph analysis result"""
+    """调用图分析结果"""
     edges: list[CallEdge]
-    user_functions: set[str]    # set of all user-defined function names
-    called_functions: set[str]  # set of called function names
-    entry_points: list[str]     # entry point functions
-    max_depth: int              # maximum call depth
+    user_functions: set[str]    # 所有用户定义的函数名集合
+    called_functions: set[str]  # 被调用过的函数名集合
+    entry_points: list[str]     # 入口点函数
+    max_depth: int              # 最大调用深度
 
     def to_dict(self) -> dict:
         return {
@@ -69,35 +69,53 @@ class CallGraph:
 
 class CallGraphBuilder:
     """
-    Two-pass scan to build call graph:
-    Pass 1: Collect all user-defined function names
-    Pass 2: Extract all call relationships
+    两遍扫描构建调用图:
+    第1遍: 收集所有用户定义的函数名
+    第2遍: 提取所有调用关系
     """
 
     def __init__(self, tree: ast.AST, all_functions: list):
         """
         Args:
-            tree: result of ast.parse()
+            tree: ast.parse() 的结果
             all_functions: StructureAnalysis.all_functions
         """
         self.tree = tree
         self.all_functions = all_functions
 
-        # Pass 1: Build function name set
+        # 第1遍: 构建函数名集合
         self.user_functions: set[str] = set()
         self.func_line_map: dict[str, int] = {}  # qualified_name → lineno
+        
+        # T3优化: 预构建行号-函数名索引 O(n) → O(1) 查找
+        self.line_func_map: dict[tuple[int, str], str] = {}  # (lineno, name) → qualified_name
+        
+        # T4优化: 预构建后缀索引 O(n) → O(1) 查找
+        self.suffix_map: dict[str, list[str]] = {}  # suffix → [qualified_names]
+        
         self._collect_functions()
 
     def _collect_functions(self):
-        """Pass 1: Collect all user-defined function names"""
+        """第1遍: 收集所有用户定义的函数名"""
         for func in self.all_functions:
             self.user_functions.add(func.qualified_name)
             self.func_line_map[func.qualified_name] = func.lineno
-            # Also register short name (without class prefix)
+            
+            # T3: 构建行号索引
+            key = (func.lineno, func.name)
+            self.line_func_map[key] = func.qualified_name
+            
+            # T4: 构建后缀索引
+            suffix = func.name
+            if suffix not in self.suffix_map:
+                self.suffix_map[suffix] = []
+            self.suffix_map[suffix].append(func.qualified_name)
+            
+            # 也注册短名（不带类前缀）
             self.user_functions.add(func.name)
 
     def build(self) -> CallGraph:
-        """Pass 2: Extract call relationships, build call graph"""
+        """第2遍: 提取调用关系，构建调用图"""
         edges = []
         called = set()
 
@@ -105,17 +123,17 @@ class CallGraphBuilder:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
 
-            # Determine the caller
+            # 确定调用者
             caller = self._get_qualified_name(node)
             if caller is None:
                 continue
 
-            # Traverse all Call nodes in function body
+            # 遍历函数体中的所有Call节点
             for child in ast.walk(node):
                 if isinstance(child, ast.Call):
                     callee_name = self._extract_callee_name(child)
                     if callee_name and callee_name in self.user_functions:
-                        # Resolve callee's qualified_name
+                        # 解析callee的qualified_name
                         resolved = self._resolve_callee(callee_name)
                         if resolved:
                             edges.append(CallEdge(
@@ -126,7 +144,7 @@ class CallGraphBuilder:
                             ))
                             called.add(resolved)
 
-        # Find entry points: among called functions, those not called by other functions
+        # 找入口点: 被调用过的函数中，没有被其他函数调用的
         all_called = {e.callee for e in edges}
         all_callers = {e.caller for e in edges}
         entry_points = []
@@ -135,7 +153,7 @@ class CallGraphBuilder:
             if qn in all_called and qn not in all_callers:
                 entry_points.append(qn)
 
-        # If no entry points found, use common entry patterns
+        # 如果没找到入口点，用常见的入口模式
         if not entry_points:
             for func in self.all_functions:
                 if func.name in ('main', 'run', 'execute', 'process',
@@ -143,7 +161,7 @@ class CallGraphBuilder:
                                  'cli', 'app'):
                     entry_points.append(func.qualified_name)
 
-        # Calculate maximum call depth
+        # 计算最大调用深度
         max_depth = self._calc_max_depth(edges)
 
         return CallGraph(
@@ -155,54 +173,50 @@ class CallGraphBuilder:
         )
 
     def _get_qualified_name(self, node) -> str | None:
-        """Get qualified_name for a function node"""
-        # Need to find matching entry in all_functions
-        for func in self.all_functions:
-            if func.lineno == node.lineno and func.name == node.name:
-                return func.qualified_name
-        return node.name
+        """获取函数节点的qualified_name（O(1)索引查找）"""
+        # T3优化: 使用预构建的索引
+        key = (node.lineno, node.name)
+        return self.line_func_map.get(key, node.name)
 
     def _extract_callee_name(self, call_node: ast.Call) -> str | None:
-        """Extract called function name from Call node"""
+        """从Call节点提取被调用函数名"""
         func = call_node.func
 
         if isinstance(func, ast.Name):
-            # Direct call: train_one_epoch() → may be user function
+            # 直接调用: train_one_epoch() → 可能是用户函数
             return func.id
         elif isinstance(func, ast.Attribute):
-            # Method call: model.train() / optimizer.step()
-            # Not resolved to user function (to avoid model.train() falsely matching train() function)
+            # 方法调用: model.train() / optimizer.step()
+            # 不解析为用户函数（避免model.train()误匹配train()函数）
             return None
         elif isinstance(func, ast.Call):
-            # Decorator factory: @decorator()
+            # 装饰器工厂: @decorator()
             return None
         return None
 
     def _resolve_callee(self, name: str) -> str | None:
-        """Resolve short name to qualified_name"""
-        # Exact match
-        if name in self.func_line_map:
-            # If there are multiple functions with the same name, return the first one
-            for qn in self.user_functions:
-                if qn == name or qn.endswith(f".{name}"):
-                    return qn
-        # Fuzzy match: with class prefix
-        for qn in self.user_functions:
-            if qn.endswith(f".{name}"):
-                return qn
-        return name  # Return original name when cannot resolve
+        """将短名解析为qualified_name（O(1)后缀索引查找）"""
+        # T4优化: 使用预构建的后缀索引
+        if name in self.suffix_map:
+            candidates = self.suffix_map[name]
+            # 优先返回精确匹配（短名本身就是qualified_name）
+            if name in candidates:
+                return name
+            # 否则返回第一个匹配
+            return candidates[0] if candidates else name
+        return name
 
     def _calc_max_depth(self, edges: list[CallEdge]) -> int:
-        """Calculate maximum call depth"""
+        """计算最大调用深度"""
         if not edges:
             return 0
 
-        # Build adjacency list
+        # 构建邻接表
         adj: dict[str, list[str]] = {}
         for e in edges:
             adj.setdefault(e.caller, []).append(e.callee)
 
-        # DFS to find longest path (may have cycles, need visited)
+        # DFS求最长路径（可能有环，需要visited）
         visited = set()
         max_d = 0
 
@@ -223,6 +237,6 @@ class CallGraphBuilder:
 
 
 def build_call_graph(tree: ast.AST, all_functions: list) -> CallGraph:
-    """Convenience function: build call graph"""
+    """便捷函数: 构建调用图"""
     builder = CallGraphBuilder(tree, all_functions)
     return builder.build()
