@@ -6,6 +6,7 @@ impact_analyzer.py — 修改影响面分析器
 
 from collections import deque
 from dataclasses import dataclass, field
+from .call_graph import SPECIAL_FUNCTIONS
 
 
 @dataclass
@@ -122,7 +123,6 @@ class ImpactAnalyzer:
     def _is_special(self, func: str) -> bool:
         """检查是否为Python特殊方法"""
         name = func.split('.')[-1] if '.' in func else func
-        from .call_graph import SPECIAL_FUNCTIONS
         return name in SPECIAL_FUNCTIONS
 
 
