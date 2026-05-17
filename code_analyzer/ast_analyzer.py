@@ -7,7 +7,6 @@ ast_analyzer.py — Python代码AST结构分析器
 import ast
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
 from pathlib import Path
 
 
@@ -18,10 +17,10 @@ class FunctionInfo:
     name: str
     qualified_name: str  # ClassName.method 或 module.function
     lineno: int
-    end_lineno: Optional[int]
+    end_lineno: int | None
     args: list[str]
     decorators: list[str]
-    docstring: Optional[str]
+    docstring: str | None
     docstring_length: int
     line_count: int  # 函数体行数
     cyclomatic_complexity: int
@@ -31,17 +30,17 @@ class FunctionInfo:
     is_staticmethod: bool
     is_property: bool
     is_async: bool
-    parent_class: Optional[str] = None
+    parent_class: str | None = None
 
 
 @dataclass
 class ClassInfo:
     name: str
     lineno: int
-    end_lineno: Optional[int]
+    end_lineno: int | None
     bases: list[str]
     decorators: list[str]
-    docstring: Optional[str]
+    docstring: str | None
     methods: list[FunctionInfo] = field(default_factory=list)
     method_count: int = 0
 
@@ -156,10 +155,13 @@ def _cyclomatic_complexity(node: ast.AST) -> int:
 
 def _cognitive_complexity(node: ast.AST) -> int:
     """
-    认知复杂度: 嵌套加权 + 结构打断
+    认知复杂度: 嵌套加权 + 结构打断 (SonarQube标准)
     - 每层嵌套(if/for/while/with/try) +1
-    - else/elif/except +1
+    - else/elif/except +1 (结构打断)
+    - break/continue +1 (跳出控制流)
     - 嵌套内的决策点 + 嵌套深度
+    - BoolOp: 每个额外操作符 +1
+    - 三元运算符 +1
     """
     complexity = 0
 
@@ -177,7 +179,9 @@ def _cognitive_complexity(node: ast.AST) -> int:
             elif isinstance(child, ast.BoolOp):
                 complexity += len(child.values) - 1
             elif isinstance(child, ast.IfExp):
-                complexity += depth + 1
+                complexity += depth + 1  # 三元运算符
+            elif isinstance(child, (ast.Break, ast.Continue)):
+                complexity += 1  # 跳出控制流
             else:
                 _walk_depth(child, depth)
 
@@ -302,7 +306,7 @@ class ASTAnalyzer:
                 functions.append(func)
         return functions
 
-    def _make_function_info(self, node, class_name: str = None, is_method: bool = False) -> FunctionInfo:
+    def _make_function_info(self, node, class_name: str | None = None, is_method: bool = False) -> FunctionInfo:
         """从AST节点创建FunctionInfo"""
         # 函数名
         name = node.name
