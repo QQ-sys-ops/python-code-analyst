@@ -201,14 +201,8 @@ class DependencyAnalyzer:
 
         for sf in source_files:
             try:
-                for encoding in ('utf-8', 'gbk', 'latin-1'):
-                    try:
-                        source = Path(sf).read_text(encoding=encoding)
-                        break
-                    except (UnicodeDecodeError, UnicodeError):
-                        continue
-                else:
-                    continue
+                from .utils import read_file_with_encoding
+                source = read_file_with_encoding(sf)
 
                 tree = ast.parse(source)
                 deps = set()
