@@ -1,9 +1,9 @@
 """
-code_analyzer — Python Static Code Analysis Toolkit
-Features: structure analysis, call graph, impact analysis, dead code detection, dependency analysis, 12-section report
+code_analyzer — Python代码静态分析工具包
+功能: 结构分析、调用图、影响面、死代码、依赖分析、12节报告
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 from .ast_analyzer import analyze_file, analyze_source, StructureAnalysis
 from .call_graph import build_call_graph, CallGraph
