@@ -68,10 +68,6 @@ class DeadCodeDetector:
                 if neighbor not in reachable:
                     queue.append(neighbor)
 
-        # 也标记被直接调用的函数（入口点可能不完整）
-        for edge in self.call_graph.edges:
-            reachable.add(edge.callee)
-
         # 收集所有用户定义的函数
         user_funcs = set()
         special_excluded = []
