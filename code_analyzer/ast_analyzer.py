@@ -1,7 +1,7 @@
 """
-ast_analyzer.py — Python Code AST Structure Analyzer
-Features: Structure extraction, cyclomatic complexity, cognitive complexity, doc coverage
-Dependencies: Python standard library (ast, pathlib, dataclasses)
+ast_analyzer.py — Python代码AST结构分析器
+功能: 结构提取、圈复杂度、认知复杂度、文档覆盖率
+依赖: Python标准库(ast, pathlib, dataclasses)
 """
 
 import ast
@@ -11,19 +11,19 @@ from typing import Optional
 from pathlib import Path
 
 
-# ─── Data Structures ───────────────────────────────────────
+# ─── 数据结构 ───────────────────────────────────────────────
 
 @dataclass
 class FunctionInfo:
     name: str
-    qualified_name: str  # ClassName.method or module.function
+    qualified_name: str  # ClassName.method 或 module.function
     lineno: int
     end_lineno: Optional[int]
     args: list[str]
     decorators: list[str]
     docstring: Optional[str]
     docstring_length: int
-    line_count: int  # function body line count
+    line_count: int  # 函数体行数
     cyclomatic_complexity: int
     cognitive_complexity: int
     is_method: bool
@@ -56,18 +56,18 @@ class ImportInfo:
 
 @dataclass
 class StructureAnalysis:
-    """Complete structure analysis result"""
+    """完整的结构分析结果"""
     file_path: str
     total_lines: int
-    sloc: int  # effective code lines (excluding blank lines and pure comments)
+    sloc: int  # 有效代码行数（不含空行和纯注释）
     classes: list[ClassInfo]
-    functions: list[FunctionInfo]  # module-level functions (excluding class methods)
+    functions: list[FunctionInfo]  # 模块级函数（不含类方法）
     imports: list[ImportInfo]
-    all_functions: list[FunctionInfo]  # all functions (including class methods)
-    # Summary statistics
+    all_functions: list[FunctionInfo]  # 所有函数（含类方法）
+    # 汇总统计
     class_count: int
-    function_count: int  # module-level function count
-    method_count: int  # class method count
+    function_count: int  # 模块级函数数
+    method_count: int  # 类方法数
     import_count: int
     avg_complexity: float
     max_complexity: int
@@ -75,7 +75,7 @@ class StructureAnalysis:
     total_arguments: int
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dict"""
+        """转为JSON可序列化的dict"""
         return {
             "file_path": self.file_path,
             "total_lines": self.total_lines,
@@ -125,36 +125,15 @@ class StructureAnalysis:
             "line_count": f.line_count,
             "is_method": f.is_method,
             "parent_class": f.parent_class,
-            # radon-compatible fields
-            "complexity": f.cyclomatic_complexity,
-            "rank": _cc_rank(f.cyclomatic_complexity),
-            "type": "M" if f.is_method else "F",
         }
 
 
-# ─── radon Compatible: Cyclomatic Complexity Rank ──────────
-
-def _cc_rank(cc: int) -> str:
-    """Rating mapping exactly matching radon: A(1-5) B(6-10) C(11-15) D(16-20) E(21-25) F(>25)"""
-    if cc <= 5:
-        return "A"
-    if cc <= 10:
-        return "B"
-    if cc <= 15:
-        return "C"
-    if cc <= 20:
-        return "D"
-    if cc <= 25:
-        return "E"
-    return "F"
-
-
-# ─── Complexity Calculation ─────────────────────────────────
+# ─── 复杂度计算 ─────────────────────────────────────────────
 
 def _cyclomatic_complexity(node: ast.AST) -> int:
     """
-    Cyclomatic complexity: base score 1, +1 for each decision point
-    Decision points: if/elif/for/while/except/with/and/or/ifexp/try
+    圈复杂度: 基础分1，每个决策点+1
+    决策点: if/elif/for/while/except/with/and/or/ifexp/try
     """
     complexity = 1
     for child in ast.walk(node):
@@ -166,21 +145,21 @@ def _cyclomatic_complexity(node: ast.AST) -> int:
         elif isinstance(child, ast.IfExp):
             complexity += 1
         elif isinstance(child, (ast.Try, getattr(ast, 'TryStar', ast.AST))):
-            # Python 3.11+ has TryStar, 3.8-3.10 only has Try
+            # Python 3.11+ 有 TryStar, 3.8-3.10 只有 Try
             if isinstance(child, ast.Try) or (
                 hasattr(ast, 'TryStar') and isinstance(child, ast.TryStar)
             ):
-                # Try itself is not counted, but ExceptHandler is already counted above
+                # Try本身不算，但ExceptHandler已经在上面算了
                 pass
     return complexity
 
 
 def _cognitive_complexity(node: ast.AST) -> int:
     """
-    Cognitive complexity: nesting weight + structural break
-    - Each nesting level (if/for/while/with/try) +1
+    认知复杂度: 嵌套加权 + 结构打断
+    - 每层嵌套(if/for/while/with/try) +1
     - else/elif/except +1
-    - Decision points inside nesting + nesting depth
+    - 嵌套内的决策点 + 嵌套深度
     """
     complexity = 0
 
@@ -189,11 +168,11 @@ def _cognitive_complexity(node: ast.AST) -> int:
         for child in ast.iter_child_nodes(node):
             if isinstance(child, (ast.If, ast.For, ast.While, ast.With)):
                 depth += 1
-                complexity += depth  # nesting depth weight
+                complexity += depth  # 嵌套深度加权
                 _walk_depth(child, depth)
                 depth -= 1
             elif isinstance(child, ast.ExceptHandler):
-                complexity += depth + 1  # except break + nesting
+                complexity += depth + 1  # except打断+嵌套
                 _walk_depth(child, depth + 1)
             elif isinstance(child, ast.BoolOp):
                 complexity += len(child.values) - 1
@@ -206,10 +185,10 @@ def _cognitive_complexity(node: ast.AST) -> int:
     return complexity
 
 
-# ─── AST Analyzer ──────────────────────────────────────────
+# ─── AST分析器 ───────────────────────────────────────────────
 
 class ASTAnalyzer:
-    """Python code AST structure analyzer"""
+    """Python代码AST结构分析器"""
 
     def __init__(self, source: str, filename: str = "<unknown>"):
         self.source = source
@@ -218,31 +197,31 @@ class ASTAnalyzer:
         self.tree = ast.parse(source, filename=filename)
 
     def analyze(self) -> StructureAnalysis:
-        """Execute complete structure analysis"""
+        """执行完整结构分析"""
         classes = self._extract_classes()
         functions = self._extract_module_functions()
         imports = self._extract_imports()
 
-        # Merge all functions (module-level + class methods)
+        # 合并所有函数（模块级 + 类方法）
         all_functions = list(functions)
         for cls in classes:
             all_functions.extend(cls.methods)
 
-        # Statistics
+        # 统计
         total_lines = len(self.lines)
         sloc = sum(1 for line in self.lines if line.strip() and not line.strip().startswith('#'))
 
-        # Complexity statistics
+        # 复杂度统计
         complexities = [f.cyclomatic_complexity for f in all_functions]
         avg_complexity = sum(complexities) / len(complexities) if complexities else 0
         max_complexity = max(complexities) if complexities else 0
 
-        # Doc coverage
+        # 文档覆盖率
         total_funcs = len(all_functions)
         documented = sum(1 for f in all_functions if f.docstring and f.docstring_length > 10)
         doc_coverage = (documented / total_funcs * 100) if total_funcs > 0 else 100.0
 
-        # Total arguments
+        # 参数总数
         total_args = sum(len(f.args) for f in all_functions)
 
         return StructureAnalysis(
@@ -264,7 +243,7 @@ class ASTAnalyzer:
         )
 
     def _extract_classes(self) -> list[ClassInfo]:
-        """Extract all class definitions"""
+        """提取所有类定义"""
         classes = []
         for node in ast.walk(self.tree):
             if not isinstance(node, ast.ClassDef):
@@ -301,7 +280,7 @@ class ASTAnalyzer:
         return classes
 
     def _extract_methods(self, class_node: ast.ClassDef, class_name: str) -> list[FunctionInfo]:
-        """Extract all methods of a class"""
+        """提取类的所有方法"""
         methods = []
         for node in class_node.body:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -315,7 +294,7 @@ class ASTAnalyzer:
         return methods
 
     def _extract_module_functions(self) -> list[FunctionInfo]:
-        """Extract module-level functions (not inside classes)"""
+        """提取模块级函数（不在类内部的）"""
         functions = []
         for node in self.tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -324,21 +303,21 @@ class ASTAnalyzer:
         return functions
 
     def _make_function_info(self, node, class_name: str = None, is_method: bool = False) -> FunctionInfo:
-        """Create FunctionInfo from AST node"""
-        # Function name
+        """从AST节点创建FunctionInfo"""
+        # 函数名
         name = node.name
         if class_name:
             qualified_name = f"{class_name}.{name}"
         else:
             qualified_name = name
 
-        # Arguments list
+        # 参数列表
         args = []
         for arg in node.args.args:
             if arg.arg != 'self' and arg.arg != 'cls':
                 args.append(arg.arg)
 
-        # Decorators
+        # 装饰器
         decorators = []
         is_classmethod = False
         is_staticmethod = False
@@ -359,11 +338,11 @@ class ASTAnalyzer:
         docstring = ast.get_docstring(node)
         docstring_length = len(docstring) if docstring else 0
 
-        # Line count
+        # 行数
         end_lineno = getattr(node, 'end_lineno', None)
         line_count = (end_lineno - node.lineno + 1) if end_lineno else 0
 
-        # Complexity
+        # 复杂度
         cc = _cyclomatic_complexity(node)
         cog = _cognitive_complexity(node)
 
@@ -388,7 +367,7 @@ class ASTAnalyzer:
         )
 
     def _extract_imports(self) -> list[ImportInfo]:
-        """Extract all import statements"""
+        """提取所有导入语句"""
         imports = []
         for node in self.tree.body:
             if isinstance(node, ast.Import):
@@ -411,30 +390,26 @@ class ASTAnalyzer:
         return imports
 
 
-# ─── Convenience Functions ──────────────────────────────────
+# ─── 便捷函数 ───────────────────────────────────────────────
 
 def analyze_source(source: str, filename: str = "<unknown>") -> StructureAnalysis:
-    """Analyze Python source code string"""
+    """分析Python源码字符串"""
     analyzer = ASTAnalyzer(source, filename)
     return analyzer.analyze()
 
 
 def analyze_file(file_path: str) -> StructureAnalysis:
-    """Analyze Python file"""
+    """分析Python文件"""
+    from .utils import read_file_with_encoding
     path = Path(file_path)
-    # Try multiple encodings
-    for encoding in ('utf-8', 'gbk', 'latin-1'):
-        try:
-            source = path.read_text(encoding=encoding)
-            return analyze_source(source, str(path))
-        except (UnicodeDecodeError, UnicodeError):
-            continue
-    raise ValueError(f"Cannot read file {file_path}: unsupported encoding")
+    # 使用统一的编码回退函数
+    source = read_file_with_encoding(path)
+    return analyze_source(source, str(path))
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python -m code_analyzer.ast_analyzer <file.py>")
+        print("用法: python -m code_analyzer.ast_analyzer <file.py>")
         sys.exit(1)
 
     result = analyze_file(sys.argv[1])
